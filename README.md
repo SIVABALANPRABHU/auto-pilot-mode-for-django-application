@@ -1,0 +1,1 @@
+# auto-pilot-mode-for-django-application
