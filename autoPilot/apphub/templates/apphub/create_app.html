@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create App</title>
+</head>
+<body>
+    <h1>Create a New Django App</h1>
+    <form method="post">
+        {% csrf_token %}
+        <h2>App Details</h2>
+        {{ app_form.as_p }}
+
+        <h2>Model Fields</h2>
+        {{ field_formset.management_form }}
+        {% for form in field_formset %}
+            {{ form.as_p }}
+        {% endfor %}
+
+        <button type="submit">Create App</button>
+    </form>
+</body>
+</html>
