@@ -1,33 +1,29 @@
-from django.shortcuts import render, redirect
-from django.conf import settings
-import os
-from .forms import GeneratedAppForm, ModelFieldFormSet
+from django.shortcuts import render
 from django.http import HttpResponse
+from django.core.management import call_command
+import os
+from django.conf import settings
+from .forms import GeneratedAppForm, ModelFieldFormSet
 from .models import GeneratedApp, ModelField
 import logging
-from django.core.management import call_command
-from django.http import HttpResponse
 
-
+logger = logging.getLogger(__name__)
 
 def index(request):
     return HttpResponse("Welcome to the AppHub!")
 
-
-# Helper function to create the app directory and necessary files
 def create_app_directory(app_name):
-    app_path = os.path.join(settings.BASE_DIR, app_name)
-    os.makedirs(app_path, exist_ok=True)
-
-    # Create necessary files for the new app
-    open(os.path.join(app_path, '__init__.py'), 'w').close()
-    open(os.path.join(app_path, 'models.py'), 'w').close()
-    open(os.path.join(app_path, 'views.py'), 'w').close()
-    open(os.path.join(app_path, 'urls.py'), 'w').close()
-    open(os.path.join(app_path, 'admin.py'), 'w').close()
-
+    """Create the app directory using the Django startapp command."""
+    try:
+        # Call the Django startapp command to create the app structure
+        call_command('startapp', app_name)
+        logger.info(f"App '{app_name}' created successfully using startapp.")
+    except Exception as e:
+        logger.error(f"Error creating app '{app_name}': {e}")
+        return HttpResponse(f"Error creating app: {e}", status=500)
 
 def generate_model_code(app_name, fields):
+    """Generate the models.py code for the new app."""
     code = f"from django.db import models\n\n\nclass {app_name.capitalize()}(models.Model):\n"
     for field in fields:
         code += f"    {field['name']} = models.{field['field_type']}("
@@ -42,6 +38,7 @@ def generate_model_code(app_name, fields):
 
 
 def generate_crud_views_code(app_name):
+    """Generate the CRUD views code for the new app."""
     class_name = app_name.capitalize()
     views_code = f"""from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
@@ -69,9 +66,8 @@ class {class_name}DeleteView(DeleteView):
 """
     return views_code
 
-
-# Generate URL paths for the CRUD views
 def generate_crud_urls_code(app_name):
+    """Generate the CRUD URLs code for the new app."""
     class_name = app_name.capitalize()
     urls_code = f"""from django.urls import path
 from .views import (
@@ -126,11 +122,6 @@ def update_urls(app_name):
         with open(urls_file_path, 'w') as f:
             f.write(urls_content)
 
-
-
-
-logger = logging.getLogger(__name__)
-
 def create_app(request):
     if request.method == "POST":
         app_form = GeneratedAppForm(request.POST)
@@ -145,7 +136,7 @@ def create_app(request):
                 field.app = app  # Set the related GeneratedApp instance
                 field.save()  # Save each field
 
-            # Generate app directory and necessary files
+            # Create the app directory using startapp command
             create_app_directory(app.name)
 
             # Generate models.py based on the fields
@@ -194,6 +185,7 @@ def create_app(request):
                 return HttpResponse(f"Error during migrations: {e}", status=500)
 
             return HttpResponse(f"App '{app.name}' created successfully with CRUD views, URLs, templates, and database migrations!")
+
     else:
         app_form = GeneratedAppForm()
         field_formset = ModelFieldFormSet(queryset=ModelField.objects.none())
